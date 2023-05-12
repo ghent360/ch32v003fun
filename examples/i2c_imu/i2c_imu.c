@@ -6,8 +6,10 @@
 #include "funplus.h"
 #include "i2c.h"
 #include "quaternion_filters.h"
+#include "mpu9250.h"
 
 //uint8_t test_data[] = {0x72, 00, 00, 00, 00};
+float testResults[6];
 
 int main()
 {
@@ -42,6 +44,7 @@ int main()
 
 	while(1)
 	{
+#if 1
 		//i2c_write(0b1101000, test_data, sizeof(test_data));
 		uint8_t test_data;
 
@@ -60,7 +63,16 @@ int main()
 		} else {
 			GPIO_Set(GPIOD, 0); // Turn on PD0 (LED OFF)
 		}
+#endif
+		// wake up device
+		// Clear sleep mode bit (6), enable all sensors
+		i2c_write_reg(MPU9250_ADDRESS, MPU9250_PWR_MGMT_1, 0x00);
+		Delay_Ms(100); // Wait for all registers to reset 
 
-		Delay_Ms(1000);
+		// get stable time source
+		// Auto select clock source to be PLL gyroscope reference if ready else
+		i2c_write_reg(MPU9250_ADDRESS, MPU9250_PWR_MGMT_1, 0x01);
+		Delay_Ms(200);
+		MPU9250SelfTest(testResults);
 	}
 }

@@ -15,8 +15,16 @@
 // uncomment this to enable IRQ-driven operation
 //#define I2C_USE_IRQ
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void i2c_init_master(void);
 uint8_t i2c_write(uint8_t addr, const uint8_t *data, uint8_t sz);
 uint8_t i2c_write_reg(uint8_t addr, uint8_t reg, uint8_t value);
 uint8_t i2c_read(uint8_t addr, uint8_t reg, uint8_t *data, uint8_t sz);
 uint8_t i2c_read_reg(uint8_t addr, uint8_t reg);
+
+#ifdef __cplusplus
+}
+#endif
