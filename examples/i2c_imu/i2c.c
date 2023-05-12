@@ -105,7 +105,7 @@ static inline uint8_t wait_i2c_tx_empty() {
 	{
 		uint16_t star1 = I2C1->STAR1;
 		if ((star1 & (I2C_STAR1_BERR | I2C_STAR1_ARLO | I2C_STAR1_AF)) != 0) return 2;
-		if ((star1 & I2C_STAR1_TXE) == I2C_STAR1_TXE) return 0;
+		if (star1 & I2C_STAR1_TXE) return 0;
 		timeout--;
 	} while (timeout);
 	return 1;
@@ -120,8 +120,8 @@ static inline uint8_t wait_i2c_rx_not_empty() {
 	do
 	{
 		uint16_t star1 = I2C1->STAR1;
-		if ((star1 & (I2C_STAR1_BERR | I2C_STAR1_ARLO | I2C_STAR1_AF)) != 0) return 2;
-		if ((star1 & I2C_STAR1_RXNE) == I2C_STAR1_RXNE) return 0;
+		//if (star1 & I2C_STAR1_BERR) return 2;
+		if (star1 & I2C_STAR1_RXNE) return 0;
 		timeout--;
 	} while (timeout);
 	return 1;
@@ -249,7 +249,6 @@ static inline uint8_t i2c_write_internal(
 	I2C1->CTLR1 |= I2C_CTLR1_START;
 	// wait for master mode select
 	if (wait_i2c_evt(I2C_EVENT_MASTER_MODE_SELECT)) {
-		I2C1->CTLR1 |= I2C_CTLR1_STOP;
 		return 2;
 	}
 	// send 7-bit address + write flag
@@ -305,14 +304,13 @@ uint8_t i2c_write_reg(uint8_t addr, uint8_t reg, uint8_t value)
  */
 uint8_t i2c_read(uint8_t addr, uint8_t reg, uint8_t *data, uint8_t sz)
 {
-	i2c_write_internal(addr, &reg, 1, 0);
+	if (i2c_write_internal(addr, &reg, 1, 0)) return 1;
 
     // Set START condition and enable ACK of received bytes
 	I2C1->CTLR1 |= I2C_CTLR1_START | I2C_CTLR1_ACK;
 
 	// wait for master mode select
 	if (wait_i2c_evt(I2C_EVENT_MASTER_MODE_SELECT)) {
-		I2C1->CTLR1 |= I2C_CTLR1_STOP;
 		return 2;
 	}
 
