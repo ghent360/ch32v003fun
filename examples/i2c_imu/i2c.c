@@ -363,16 +363,16 @@ void i2c_init_master(void)
 	uint16_t tempreg;
 
 	// Enable GPIOC and I2C
-	ABP2ClockEnable(RCC_APB2Periph_GPIOC);
-	ABP1ClockEnable(RCC_APB1Periph_I2C1);
+	//ABP2ClockEnable(RCC_APB2Periph_GPIOC);
+	//ABP1ClockEnable(RCC_APB1Periph_I2C1);
 	
 	// PC1 is SDA, 10MHz Output, alt func, open-drain
 	// PC2 is SCL, 10MHz Output, alt func, open-drain
-	GPIO_Configure_Pin(GPIOC, 1, GPIO_Speed_10MHz, GPIO_CNF_OUT_OD_AF);
-	GPIO_Configure_Pin(GPIOC, 2, GPIO_Speed_10MHz, GPIO_CNF_OUT_OD_AF);
+	//GPIO_Configure_Pin(GPIOC, 1, GPIO_Speed_10MHz, GPIO_CNF_OUT_OD_AF);
+	//GPIO_Configure_Pin(GPIOC, 2, GPIO_Speed_10MHz, GPIO_CNF_OUT_OD_AF);
 
-	// Reset I2C1 to init all regs
-	ABP1Reset(RCC_APB1Periph_I2C1);
+	// Reset I2C1 to init all regs. Not sure we need it though.
+	//ABP1Reset(RCC_APB1Periph_I2C1);
 	
 	// set freq
 	tempreg = I2C1->CTLR2;

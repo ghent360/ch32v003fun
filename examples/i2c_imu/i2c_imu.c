@@ -14,14 +14,31 @@ int main()
 	// 48MHz internal clock
 	SystemInit48HSI();
 
+	// Enable all clocks in one go.
+	ABP2ClockEnable(
+		RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD | RCC_APB2Periph_USART1);
+	ABP1ClockEnable(RCC_APB1Periph_I2C1);
+
+    // Configure each GPIO port in one go.
+	GPIO_Configure_Pins(GPIOC,
+	  GPIO_Configure_Mask(1) |
+	  GPIO_Configure_Mask(2),
+	  GPIO_Configure_Mode(1, GPIO_Speed_10MHz, GPIO_CNF_OUT_OD_AF) |
+	  GPIO_Configure_Mode(2, GPIO_Speed_10MHz, GPIO_CNF_OUT_OD_AF));
+
+	GPIO_Configure_Pins(GPIOD,
+	  GPIO_Configure_Mask(0) |
+	  GPIO_Configure_Mask(4) |
+	  GPIO_Configure_Mask(5) |
+	  GPIO_Configure_Mask(6),
+	  GPIO_Configure_Mode(0, GPIO_Speed_10MHz, GPIO_CNF_OUT_PP) |
+	  GPIO_Configure_Mode(4, GPIO_Speed_10MHz, GPIO_CNF_OUT_PP) |
+	  GPIO_Configure_Mode(5, GPIO_Speed_10MHz, GPIO_CNF_OUT_PP_AF) |
+	  GPIO_Configure_Mode(6, GPIO_SPEED_IN, GPIO_CNF_IN_FLOATING));
+
 	// PD5(TX), PD6(RX) - 115200, 8n1
 	UART_SetupRxTx();
 	i2c_init_master();
-
-	// Done in UART_SetupRxTx
-	//ABP2ClockEnable(RCC_APB2Periph_GPIOD);
-	GPIO_Configure_Pin(GPIOD, 0, GPIO_Speed_10MHz, GPIO_CNF_OUT_PP);
-	GPIO_Configure_Pin(GPIOD, 4, GPIO_Speed_10MHz, GPIO_CNF_OUT_PP);
 
 	while(1)
 	{

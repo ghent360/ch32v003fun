@@ -38,12 +38,38 @@ static inline void ABP2Reset(uint32_t mask) {
 }
 
 /* GPIO helpers */
+static inline uint32_t GPIO_Configure_Mask(uint8_t pin) {
+    return (0xf << (pin << 2));
+}
+
+static inline uint32_t GPIO_Configure_Mode(
+    uint8_t pin, uint8_t speed, uint8_t mode) {
+    return ((speed & 0b11) | (mode & 0b1100)) << (pin << 2);
+}
+
+// Configures multiple pins on the port.
+// The mask is a bitwise 'or' of calls to GPIO_Configure_Mask for
+// all the pin numbers you want to configure.
+// The cfg value is a bitwise 'or' of calls to GPIO_Configure_Mode
+// for all the pins you want to configure.
+//
+// This generates quite optimal code when pin numbers and modes are
+// known because the compiler computes all the values.
+static inline void GPIO_Configure_Pins(
+	GPIO_TypeDef* port, uint32_t mask, uint32_t cfg) {
+    uint32_t port_cfg = port->CFGLR;
+    port_cfg &= ~mask;
+    port_cfg |= cfg;
+	port->CFGLR = port_cfg;
+}
+
+// Less optimal, but more readable version that configures a single pin.
 static inline void GPIO_Configure_Pin(
 	GPIO_TypeDef* port, uint8_t pin, uint8_t speed, uint8_t mode) {
-	uint32_t port_cfg = port->CFGLR;
-	port_cfg &= ~(0x0f<<(4*pin));
-	port_cfg |= (speed | mode) << (4*pin);
-	port->CFGLR = port_cfg;
+    GPIO_Configure_Pins(
+        port,
+        GPIO_Configure_Mask(pin),
+        GPIO_Configure_Mode(pin, speed, mode));
 }
 
 // the on and off masks indicate which port pins to turn on or off.
@@ -75,12 +101,12 @@ static inline void GPIO_Clear(GPIO_TypeDef* port, uint8_t pin) {
 static inline void UART_SetupRxTx()
 {
 	// Enable GPIOD and UART.
-	ABP2ClockEnable(RCC_APB2Periph_GPIOD | RCC_APB2Periph_USART1);
+	//ABP2ClockEnable(RCC_APB2Periph_GPIOD | RCC_APB2Periph_USART1);
 
 	// Push-Pull, 10MHz Output, GPIO D5, with Alternative Function
     // Floating input on D6.
-    GPIO_Configure_Pin(GPIOD, 5, GPIO_Speed_10MHz, GPIO_CNF_OUT_PP_AF);
-    GPIO_Configure_Pin(GPIOD, 6, GPIO_SPEED_IN, GPIO_CNF_IN_FLOATING);
+    //GPIO_Configure_Pin(GPIOD, 5, GPIO_Speed_10MHz, GPIO_CNF_OUT_PP_AF);
+    //GPIO_Configure_Pin(GPIOD, 6, GPIO_SPEED_IN, GPIO_CNF_IN_FLOATING);
 	
 	// 115200, 8n1.  Note if you don't specify a mode, UART remains off even when UE_Set.
 	USART1->CTLR1 = USART_WordLength_8b | USART_Parity_No | USART_Mode_Tx | USART_Mode_Rx;
