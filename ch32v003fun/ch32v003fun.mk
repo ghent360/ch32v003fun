@@ -1,9 +1,10 @@
 
-PREFIX?=riscv-none-elf
+PREFIX?=riscv64-unknown-elf
 
 CH32V003FUN?=../../ch32v003fun
 MINICHLINK?=../../minichlink
 OPTFLAG?= -Os -flto
+LD_LIBS?= -lgcc
 
 CFLAGS+= \
 	-g $(OPTFLAG) -fdata-sections -ffunction-sections \
@@ -18,7 +19,8 @@ CFLAGS+= \
 LDFLAGS+= \
     -T $(CH32V003FUN)/ch32v003fun.ld \
 	-Wl,--gc-sections \
-	-L$(CH32V003FUN)/../misc -lgcc -lm -lgcc
+	-L$(CH32V003FUN)/../misc \
+	$(LD_LIBS)
 
 SYSTEM_C:=$(CH32V003FUN)/ch32v003fun.c
 
