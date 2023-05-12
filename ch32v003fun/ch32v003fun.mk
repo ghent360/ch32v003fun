@@ -1,5 +1,5 @@
 
-PREFIX:=riscv-none-elf
+PREFIX?=riscv-none-elf
 
 CH32V003FUN?=../../ch32v003fun
 MINICHLINK?=../../minichlink
@@ -40,7 +40,9 @@ closechlink :
 	-killall minichlink
 endif
 
-monitor : 
+terminal : monitor
+
+monitor :
 	$(MINICHLINK)/minichlink -T
 
 gdbserver : 
@@ -51,5 +53,6 @@ cv_flash : $(TARGET).bin
 	$(MINICHLINK)/minichlink -w $< flash -b
 
 cv_clean :
-	rm -rf $(TARGET).elf $(TARGET).bin $(TARGET).hex $(TARGET).lst $(TARGET).map $(TARGET).hex
+	rm -rf $(TARGET).elf $(TARGET).bin $(TARGET).hex $(TARGET).lst $(TARGET).map $(TARGET).hex || true
 
+build : $(TARGET).bin

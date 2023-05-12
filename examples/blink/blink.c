@@ -4,8 +4,6 @@
 #include "ch32v003fun.h"
 #include <stdio.h>
 
-#define APB_CLOCK SYSTEM_CORE_CLOCK
-
 static inline void GPIO_Configure_Pin(
 	GPIO_TypeDef* port, uint8_t pin, uint8_t speed, uint8_t mode) {
 	uint32_t port_cfg = port->CFGLR;
@@ -64,4 +62,3 @@ int main()
 	}
 	return 0;
 }
-
