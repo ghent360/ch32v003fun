@@ -9,38 +9,20 @@
 
 //uint8_t test_data[] = {0x72, 00, 00, 00, 00};
 
-#define MPU_9250_ADDR 0b1101000
-
-#define PWR_MGMNT_1_  0x6B
-#define CLKSEL_PLL_   0x01
-#define H_RESET_      0x80
-
 int main()
 {
 	// 48MHz internal clock
 	SystemInit48HSI();
 
-	// PD5(TX), PD6(RX) - 115200, 8, 1, n
-	UART_SetupRxTx(UART_BRR);
+	// PD5(TX), PD6(RX) - 115200, 8n1
+	UART_SetupRxTx();
 	i2c_init_master();
-#if 1
+
 	// Done in UART_SetupRxTx
 	//ABP2ClockEnable(RCC_APB2Periph_GPIOD);
 	GPIO_Configure_Pin(GPIOD, 0, GPIO_Speed_10MHz, GPIO_CNF_OUT_PP);
 	GPIO_Configure_Pin(GPIOD, 4, GPIO_Speed_10MHz, GPIO_CNF_OUT_PP);
-#endif
 
-#if 0
-    /* Select clock source to gyro */
-    i2c_write_reg(MPU_9250_ADDR, PWR_MGMNT_1_, CLKSEL_PLL_);
-	/* Reset the MPU-9250 */
-    i2c_write_reg(MPU_9250_ADDR, PWR_MGMNT_1_, H_RESET_);
-    /* Wait for MPU-9250 to come back up */
-    Delay_Ms(1000);
-    /* Select clock source to gyro */
-    i2c_write_reg(MPU_9250_ADDR, PWR_MGMNT_1_, CLKSEL_PLL_);
-	Delay_Ms(1000);
-#endif
 	while(1)
 	{
 		//i2c_write(0b1101000, test_data, sizeof(test_data));
@@ -62,13 +44,6 @@ int main()
 			GPIO_Set(GPIOD, 0); // Turn on PD0 (LED OFF)
 		}
 
-        for(test_data = 0; test_data < 100; test_data++)
-		{
-			if (!UART_IsDataAvailable()) {
-				Delay_Ms(10);
-			} else {
-				UART_WriteByte(UART_ReadByte());
-			}
-		}
+		Delay_Ms(1000);
 	}
 }

@@ -72,7 +72,7 @@ static inline void GPIO_Clear(GPIO_TypeDef* port, uint8_t pin) {
 }
 
 /* USART Stuff */
-static inline void UART_SetupRxTx( int uartBRR )
+static inline void UART_SetupRxTx()
 {
 	// Enable GPIOD and UART.
 	ABP2ClockEnable(RCC_APB2Periph_GPIOD | RCC_APB2Periph_USART1);
@@ -87,7 +87,7 @@ static inline void UART_SetupRxTx( int uartBRR )
 	USART1->CTLR2 = USART_StopBits_1;
 	USART1->CTLR3 = USART_HardwareFlowControl_None;
 
-	USART1->BRR = uartBRR;
+	USART1->BRR = UART_BRR;
 	USART1->CTLR1 |= CTLR1_UE_Set;
 }
 
@@ -96,7 +96,7 @@ static inline uint8_t UART_IsDataAvailable()
     return (USART1->STATR & USART_FLAG_RXNE);
 }
 
-static inline uint8_t UART_TxEmpty()
+static inline uint8_t UART_IsTxEmpty()
 {
     return (USART1->STATR & USART_FLAG_TXE);
 }
@@ -109,7 +109,7 @@ static inline uint8_t UART_ReadByte()
 
 static inline void UART_WriteByte(uint8_t data)
 {
-    while(!UART_TxEmpty());
+    while(!UART_IsTxEmpty());
     USART1->DATAR = data;
 }
 
