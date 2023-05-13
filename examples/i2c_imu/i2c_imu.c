@@ -50,7 +50,7 @@ int main()
 
 		test_data = i2c_read_reg(0x68, 0x75);
 		if (test_data == 0x71) {
-			UART_WriteStr("MPU-9250 Found\n\r");
+			UART_WriteStr("MPU-9250 Found");UART_WriteStr(CRLF);
 			GPIO_Clear(GPIOD, 4); // Turn off PD4 (LED ON)
 		} else {
 			GPIO_Set(GPIOD, 4); // Turn on PD4 (LED OFF)
@@ -58,7 +58,7 @@ int main()
 
 		test_data = i2c_read_reg(0x76, 0xD0);
 		if (test_data == 0x58) {
-			UART_WriteStr("BNP280 Found\n\r");
+			UART_WriteStr("BNP280 Found");UART_WriteStr(CRLF);
 			GPIO_Clear(GPIOD, 0); // Turn off PD0 (LED ON)
 		} else {
 			GPIO_Set(GPIOD, 0); // Turn on PD0 (LED OFF)
@@ -74,5 +74,12 @@ int main()
 		i2c_write_reg(MPU9250_ADDRESS, MPU9250_PWR_MGMT_1, 0x01);
 		Delay_Ms(200);
 		MPU9250SelfTest(testResults);
+		UART_WriteStr("Test Results");UART_WriteStr(CRLF);
+        UART_WriteStr("ax = ");UART_WriteFloat(testResults[0], 2);
+		UART_WriteStr("    gx = ");UART_WriteFloat(testResults[3], 2);UART_WriteStr(CRLF);
+        UART_WriteStr("ay = ");UART_WriteFloat(testResults[1], 2);
+		UART_WriteStr("    gy = ");UART_WriteFloat(testResults[4], 2);UART_WriteStr(CRLF);
+        UART_WriteStr("az = ");UART_WriteFloat(testResults[2], 2);
+		UART_WriteStr("    gz = ");UART_WriteFloat(testResults[5], 2);UART_WriteStr(CRLF);
 	}
 }

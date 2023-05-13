@@ -139,7 +139,14 @@ static inline void UART_WriteByte(uint8_t data)
     USART1->DATAR = data;
 }
 
+extern const char CRLF[];
+
 static inline void UART_WriteStr(const char* str)
 {
     while(*str) UART_WriteByte(*str++);
 }
+
+void UART_WriteUInt(uint32_t value);
+void UART_WriteHex(uint32_t value);
+void UART_WriteInt(int32_t value);
+void UART_WriteFloat(float value, uint8_t dec_points);
