@@ -240,8 +240,8 @@ static inline uint8_t i2c_write_internal(
 	uint8_t addr, const uint8_t *data, uint8_t sz, uint8_t should_stop)
 {
 	uint8_t ret = 1;
-	// we should wait for not busy in multi master setup, which is not common.
-	//if (wait_i2c_free()) return 1;
+	// we should wait for not busy
+	if (wait_i2c_free()) return 1;
     // Set START condition
 	I2C1->CTLR1 |= I2C_CTLR1_START;
 	// wait for master mode select

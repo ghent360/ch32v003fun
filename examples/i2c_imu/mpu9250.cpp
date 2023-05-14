@@ -166,6 +166,9 @@ void AK8963_init() {
 void MPU9250_init()
 {  
     // wake up device
+    i2c_write_reg(MPU9250_ADDRESS, MPU9250_PWR_MGMT_1, 0x80);
+    Delay_Ms(100); // Wait for all registers to reset 
+
     // Clear sleep mode bit (6), enable all sensors
     i2c_write_reg(MPU9250_ADDRESS, MPU9250_PWR_MGMT_1, 0x00);
     Delay_Ms(100); // Wait for all registers to reset 

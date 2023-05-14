@@ -1,3 +1,4 @@
+#include <math.h>
 #include "ch32v003fun.h"
 #include "funplus.h"
 #include "i2c.h"
@@ -9,6 +10,61 @@
 //float testResults[6];
 #define PI 3.14159265358979323846f
 #define DEGREE_TO_RAD (PI / 180.0f)
+
+uint8_t use_mahony = 0;
+float pitch, roll, yaw;
+float lin_ax, lin_ay, lin_az;
+float a31,a32,a33;
+
+static void calculate_tb_angles() {
+	// Define output variables from updated quaternion---these are Tait-Bryan
+	// angles, commonly used in aircraft orientation. In this coordinate system,
+	// the positive z-axis is down toward Earth.
+	//
+	// Yaw is the angle between Sensor x-axis and Earth magnetic North (or true
+	// North if corrected for local declination, looking down on the sensor 
+	// positive yaw is counterclockwise.
+	//
+	// Pitch is angle between sensor x-axis and Earth ground plane, toward the
+	// Earth is positive, up toward the sky is negative.
+	//
+	// Roll is angle between sensor y-axis and Earth ground plane, y-axis up is
+	// positive roll.
+	//
+	// These arise from the definition of the homogeneous rotation matrix
+	// constructed from quaternions.
+	// Tait-Bryan angles as well as Euler angles are non-commutative; that is,
+	// the get the correct orientation the rotations must be applied in the
+	// correct order which for this configuration is yaw, pitch, and then roll.
+	// For more see http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+	// which has additional links.
+	//
+	// Software AHRS:
+	//   yaw   = atan2f(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);
+	//   pitch = -asinf(2.0f * (q[1] * q[3] - q[0] * q[2]));
+	//   roll  = atan2f(2.0f * (q[0] * q[1] + q[2] * q[3]), q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
+	//   pitch *= 180.0f / PI;
+	//   yaw   *= 180.0f / PI; 
+	//   yaw   += 13.8f; // Declination at Danville, California is 13 degrees 48 minutes and 47 seconds on 2014-04-04
+	//   if(yaw < 0) yaw   += 360.0f; // Ensure yaw stays between 0 and 360
+	//   roll  *= 180.0f / PI;
+	float a12 =   2.0f * (q[1] * q[2] + q[0] * q[3]);
+	float a22 =   q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3];
+	a31 =   2.0f * (q[0] * q[1] + q[2] * q[3]);
+	a32 =   2.0f * (q[1] * q[3] - q[0] * q[2]);
+	a33 =   q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3];
+	pitch = -asinf(a32);
+	roll  = atan2f(a31, a33);
+	yaw   = atan2f(a12, a22);
+	pitch *= 180.0f / PI;
+	yaw   *= 180.0f / PI; 
+	yaw   += 13.8f; // Declination at Danville, California is 13 degrees 48 minutes and 47 seconds on 2014-04-04
+	if(yaw < 0) yaw   += 360.0f; // Ensure yaw stays between 0 and 360
+	roll  *= 180.0f / PI;
+	lin_ax = ax + a31;
+	lin_ay = ay + a32;
+	lin_az = az - a33;
+}
 
 int main()
 {
@@ -57,9 +113,11 @@ int main()
 	}
 	MPU9250_initRes();
 	// Calibrate gyro and accelerometers, load biases in bias registers
-	MPU9250_calibrate_accelgyro();
+	//MPU9250_calibrate_accelgyro();
 	MPU9250_init();
 
+    // We can communicate with the AK8963 only after the MPU9250 has been
+	// initialized.
 	i2c_read_reg(AK8963_ADDRESS, WHO_AM_I_AK8963, &data);
 	if (data != 0x48) {
 		while(1) {
@@ -70,9 +128,12 @@ int main()
 		}
 	}
 	AK8963_init();
-	MPU9250_calibrate_mag();
+	//MPU9250_calibrate_mag();
 	uint32_t now;
-	uint32_t last_update = systick_cnt;
+	uint32_t last_imu_update = systick_cnt;
+	float elapsed_time = 0;
+	uint32_t update_cnt = 0;
+	uint32_t last_report_time = last_imu_update;
 	while(1)
 	{
 #if 0
@@ -95,12 +156,59 @@ int main()
         if (read_imu_data() == 0) {
 			now = systick_cnt;
 			// set integration time by time elapsed since last filter update
-			deltat = ((now - last_update) / 1000000.0f);
-			last_update = now;
-			MadgwickQuaternionUpdate(
-				-ax, ay, az, 
-				gx * DEGREE_TO_RAD, -gy * DEGREE_TO_RAD, -gz * DEGREE_TO_RAD,
-				my,  -mx, mz);
+			deltat = ((now - last_imu_update) / 1000.0f);
+			elapsed_time += deltat;
+			update_cnt++;
+			last_imu_update = now;
+			if (use_mahony) {
+				MahonyQuaternionUpdate(
+					-ax, ay, az, 
+					gx * DEGREE_TO_RAD, -gy * DEGREE_TO_RAD, -gz * DEGREE_TO_RAD,
+					my,  -mx, mz);
+			} else {
+				MadgwickQuaternionUpdate(
+					-ax, ay, az, 
+					gx * DEGREE_TO_RAD, -gy * DEGREE_TO_RAD, -gz * DEGREE_TO_RAD,
+					my,  -mx, mz);
+			}
+		}
+		now = systick_cnt;
+		if (now - last_report_time > 500) {
+			calculate_tb_angles();
+
+			UART_WriteStr("Yaw, Pitch, Roll: ");
+			UART_WriteFloat(yaw, 2);
+			UART_WriteStr(", ");
+			UART_WriteFloat(pitch, 2);
+			UART_WriteStr(", ");
+			UART_WriteFloat(roll, 2);
+			UART_WriteStr(CRLF);
+
+			UART_WriteStr("Grav_x, Grav_y, Grav_z: ");
+			UART_WriteFloat(-a31 * 1000, 2);
+			UART_WriteStr(", ");
+			UART_WriteFloat(-a32 * 1000, 2);
+			UART_WriteStr(", ");
+			UART_WriteFloat(a33 * 1000, 2);
+			UART_WriteStr(" mg");
+			UART_WriteStr(CRLF);
+			UART_WriteStr("Lin_ax, Lin_ay, Lin_az: ");
+			UART_WriteFloat(lin_ax * 1000, 2);
+			UART_WriteStr(", ");
+			UART_WriteFloat(lin_ay * 1000, 2);
+			UART_WriteStr(", ");
+			UART_WriteFloat(lin_az * 1000, 2);
+			UART_WriteStr(" mg");
+			UART_WriteStr(CRLF);
+			
+			UART_WriteStr("rate = ");
+			UART_WriteFloat((float)update_cnt/elapsed_time, 2);
+			UART_WriteStr(" Hz");
+			UART_WriteStr(CRLF);
+
+			last_report_time = now;
+			elapsed_time = 0;
+			update_cnt = 0;
 		}
 	}
 }
