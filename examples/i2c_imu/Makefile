@@ -5,6 +5,9 @@ ADDITIONAL_C_FILES:=i2c.c quaternion_filters.cpp mpu9250.cpp funplus.c
 #OPTFLAG:=-Og
 LD_LIBS:=-lgcc -lm -lgcc
 PREFIX:=riscv-none-elf
+CFLAGS+= \
+  -DSYSTEM_CORE_CLOCK=48000000 \
+  -DAPB_CLOCK=SYSTEM_CORE_CLOCK
 
 include ../../ch32v003fun/ch32v003fun.mk
 

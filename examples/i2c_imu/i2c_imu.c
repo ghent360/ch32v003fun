@@ -1,7 +1,3 @@
-// Could be defined here, or in the processor defines.
-#define SYSTEM_CORE_CLOCK 48000000
-#define APB_CLOCK SYSTEM_CORE_CLOCK
-
 #include "ch32v003fun.h"
 #include "funplus.h"
 #include "i2c.h"

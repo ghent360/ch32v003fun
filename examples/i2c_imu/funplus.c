@@ -1,5 +1,3 @@
-#define SYSTEM_CORE_CLOCK 48000000
-#define APB_CLOCK SYSTEM_CORE_CLOCK
 #include "funplus.h"
 
 const char CRLF[] = "\r\n";
