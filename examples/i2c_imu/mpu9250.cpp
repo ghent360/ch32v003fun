@@ -16,8 +16,8 @@ uint8_t m_mode = 0x06;        // 2 for 8 Hz, 6 for 100 Hz continuous magnetomete
 static float a_res, g_res, m_res;// scale resolutions per LSB for the sensors
 static float mag_calibration[3];  // Factory mag calibration and mag bias
 
-static float gyro_bias_values[3];
-static float accel_bias_values[3];
+//static float gyro_bias_values[3];
+//static float accel_bias_values[3];
 static float mag_bias_values[3];
 
 static inline float getMres() {
@@ -362,9 +362,9 @@ void MPU9250_calibrate_accelgyro()
     */
 
     // Output scaled gyro biases for display in the main program
-    gyro_bias_values[0] = (float) gyro_bias[0]/(float) gyro_sensitivity;  
-    gyro_bias_values[1] = (float) gyro_bias[1]/(float) gyro_sensitivity;
-    gyro_bias_values[2] = (float) gyro_bias[2]/(float) gyro_sensitivity;
+    //gyro_bias_values[0] = (float) gyro_bias[0]/(float) gyro_sensitivity;
+    //gyro_bias_values[1] = (float) gyro_bias[1]/(float) gyro_sensitivity;
+    //gyro_bias_values[2] = (float) gyro_bias[2]/(float) gyro_sensitivity;
 
     // Construct the accelerometer biases for push to the hardware accelerometer bias registers. These registers contain
     // factory trim values which must be added to the calculated accelerometer biases; on boot up these registers will hold
@@ -403,7 +403,7 @@ void MPU9250_calibrate_accelgyro()
     accel_bias_reg[2] -= (accel_bias[2]/8);
 
     // Output scaled accelerometer biases for display in the main program
-    accel_bias[0] = (float)accel_bias[0]/(float)accel_sensitivity; 
+    accel_bias[0] = (float)accel_bias[0]/(float)accel_sensitivity;
     accel_bias[1] = (float)accel_bias[1]/(float)accel_sensitivity;
     accel_bias[2] = (float)accel_bias[2]/(float)accel_sensitivity;
 
@@ -440,9 +440,9 @@ void MPU9250_calibrate_accelgyro()
     i2c_write_reg(MPU9250_ADDRESS, MPU9250_ZA_OFFSET_H, data[4]);
     i2c_write_reg(MPU9250_ADDRESS, MPU9250_ZA_OFFSET_L, data[5]);
     */
-   accel_bias_values[0] = (float)accel_bias[0]/(float)accel_sensitivity; 
-   accel_bias_values[1] = (float)accel_bias[1]/(float)accel_sensitivity;
-   accel_bias_values[2] = (float)accel_bias[2]/(float)accel_sensitivity;
+   //accel_bias_values[0] = (float)accel_bias[0]/(float)accel_sensitivity;
+   //accel_bias_values[1] = (float)accel_bias[1]/(float)accel_sensitivity;
+   //accel_bias_values[2] = (float)accel_bias[2]/(float)accel_sensitivity;
 }
 
 void MPU9250_calibrate_mag() {
@@ -476,9 +476,9 @@ void MPU9250_calibrate_mag() {
     mag_bias[2]  = (mag_max[2] + mag_min[2])/2;  // get average z mag bias in counts
 
     // save mag biases in G for main program
-    mag_bias_values[0] = (float) mag_bias[0] * m_res * mag_calibration[0];
-    mag_bias_values[1] = (float) mag_bias[1] * m_res * mag_calibration[1];   
-    mag_bias_values[2] = (float) mag_bias[2] * m_res * mag_calibration[2];          
+    mag_bias_values[0] = (float) mag_bias[0] * mag_calibration[0];
+    mag_bias_values[1] = (float) mag_bias[1] * mag_calibration[1];
+    mag_bias_values[2] = (float) mag_bias[2] * mag_calibration[2];
 
     //Serial.println("Mag Calibration done!");
 }
