@@ -166,7 +166,7 @@ enum MPU9250Mscale {
 extern "C" {
 #endif
 
-void MPU9250SelfTest(float * destination);
+void MPU9250_self_test(float * destination);
 
 #ifdef __cplusplus
 }

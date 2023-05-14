@@ -234,25 +234,25 @@ void I2C1_EV_IRQHandler(void)
 }
 #else
 /*
- * low-level packet send for blocking polled operation via i2c
+ * polling routines
  */
 static inline uint8_t i2c_write_internal(
 	uint8_t addr, const uint8_t *data, uint8_t sz, uint8_t should_stop)
 {
-	// wait for not busy
-	if (wait_i2c_free()) return 1;
+	uint8_t ret = 1;
+	// we should wait for not busy in multi master setup, which is not common.
+	//if (wait_i2c_free()) return 1;
     // Set START condition
 	I2C1->CTLR1 |= I2C_CTLR1_START;
 	// wait for master mode select
 	if (wait_i2c_evt(I2C_EVENT_MASTER_MODE_SELECT)) {
-		return 2;
+		return 1;
 	}
 	// send 7-bit address + write flag
 	I2C1->DATAR = addr << 1;
 	// wait for transmit condition
 	if (i2c_chk_addr_write()) {
-		I2C1->CTLR1 |= I2C_CTLR1_STOP;
-		return 3;
+		goto bail;
 	}
 
 	// send data one byte at a time
@@ -260,8 +260,7 @@ static inline uint8_t i2c_write_internal(
 	{
 		// wait for TX Empty
 		if (wait_i2c_tx_empty()) {
-			I2C1->CTLR1 |= I2C_CTLR1_STOP;
-			return 4;
+			goto bail;
 		}
 		// send next byte
 		I2C1->DATAR = *data++;
@@ -269,18 +268,17 @@ static inline uint8_t i2c_write_internal(
 
 	// wait for tx complete on the last byte
 	if (wait_i2c_evt(I2C_EVENT_MASTER_BYTE_TRANSMITTED)) {
-		I2C1->CTLR1 |= I2C_CTLR1_STOP;
-		return 5;
+		goto bail;
 	}
-
+	// we're happy
+	ret = 0;
+bail:
 	if (should_stop)
 	{
 		// set STOP condition
 		I2C1->CTLR1 |= I2C_CTLR1_STOP;
 	}
-
-	// we're happy
-	return 0;
+	return ret;
 }
 
 uint8_t i2c_write(
@@ -295,27 +293,26 @@ uint8_t i2c_write_reg(uint8_t addr, uint8_t reg, uint8_t value)
 	return i2c_write(addr, data, sizeof(data));
 }
 
-/*
- * low-level packet read for blocking polled operation via i2c
- */
 uint8_t i2c_read(uint8_t addr, uint8_t reg, uint8_t *data, uint8_t sz)
 {
-	if (i2c_write_internal(addr, &reg, 1, 0)) return 1;
+	uint8_t ret = 1;
+	if (i2c_write_internal(addr, &reg, 1, 0)) {
+		goto bail;
+	}
 
     // Set START condition and enable ACK of received bytes
 	I2C1->CTLR1 |= I2C_CTLR1_START | I2C_CTLR1_ACK;
 
 	// wait for master mode select
 	if (wait_i2c_evt(I2C_EVENT_MASTER_MODE_SELECT)) {
-		return 2;
+		return 1;
 	}
 
 	// send 7-bit address + read flag
 	I2C1->DATAR = (addr << 1) | 1;
 	// wait for receive condition
 	if (i2c_chk_addr_read()) {
-		I2C1->CTLR1 |= I2C_CTLR1_STOP;
-		return 3;
+		goto bail;
 	}
 
 	// read data one byte at a time
@@ -327,25 +324,22 @@ uint8_t i2c_read(uint8_t addr, uint8_t reg, uint8_t *data, uint8_t sz)
 		}
 		// wait for RX not empty
 		if (wait_i2c_rx_not_empty()) {
-			I2C1->CTLR1 |= I2C_CTLR1_STOP;
-			return 4;
+			goto bail;
 		}
 		// read next byte
 		*data++ = I2C1->DATAR;
 	}
-
+	// we're happy
+	ret = 0;
+bail:
 	// set STOP condition
 	I2C1->CTLR1 |= I2C_CTLR1_STOP;
-
-	// we're happy
-	return 0;
+	return ret;
 }
 
-uint8_t i2c_read_reg(uint8_t addr, uint8_t reg)
+uint8_t i2c_read_reg(uint8_t addr, uint8_t reg, uint8_t *value)
 {
-	uint8_t data = 0;
-	i2c_read(addr, reg, &data, 1);
-	return data;
+	return i2c_read(addr, reg, value, 1);
 }
 #endif
 

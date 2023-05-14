@@ -4,16 +4,16 @@
 #include "mpu9250.h"
 #include "i2c.h"
 
-constexpr uint16_t gyrosensitivity  = 131;    // = 131 LSB/degrees/sec
-constexpr uint16_t accelsensitivity = 16384;  // = 16384 LSB/g
+constexpr uint16_t gyro_sensitivity  = 131;    // = 131 LSB/degrees/sec
+constexpr uint16_t accel_sensitivity = 16384;  // = 16384 LSB/g
 
-static inline float MPU9250getMres(enum MPU9250Mscale mscale) {
+static inline float getMres(enum MPU9250Mscale mscale) {
   return (mscale == MFS_14BITS) ?
     (10.0f * 4912.0f / 8190.f) :
     (10.0f * 4912.0f / 32760.0f);
 }
 
-static inline float MPU9250getGres(enum MPU9250Gscale gscale) {
+static inline float getGres(enum MPU9250Gscale gscale) {
   switch (gscale) {
  	// Possible gyro scales (and their register bit settings) are:
 	// 250 DPS (00), 500 DPS (01), 1000 DPS (10), and 2000 DPS  (11). 
@@ -28,7 +28,7 @@ static inline float MPU9250getGres(enum MPU9250Gscale gscale) {
   return (2000.0f / 32768.0f);
 }
 
-static inline float MPU9250getAres(enum MPU9250Ascale ascale) {
+static inline float getAres(enum MPU9250Ascale ascale) {
     switch (ascale) {
  	// Possible accelerometer scales (and their register bit settings) are:
 	// 2 Gs (00), 4 Gs (01), 8 Gs (10), and 16 Gs  (11). 
@@ -43,7 +43,7 @@ static inline float MPU9250getAres(enum MPU9250Ascale ascale) {
     return (16.0f / 32768.0f);
 }
 
-void MPU9250readAccelData(int16_t * destination) {
+void MPU9250_readAccelData(int16_t * destination) {
     uint8_t raw_data[6];  // x/y/z accel register data stored here
     // Read the six raw data registers into data array
     i2c_read(MPU9250_ADDRESS, MPU9250_ACCEL_XOUT_H, raw_data, 6);
@@ -53,7 +53,7 @@ void MPU9250readAccelData(int16_t * destination) {
     destination[2] = ((int16_t)raw_data[4] << 8) | raw_data[5];
 }
 
-void MPU9250readGyroData(int16_t * destination) {
+void MPU9250_readGyroData(int16_t * destination) {
     uint8_t raw_data[6];  // x/y/z gyro register data stored here
     // Read the six raw data registers sequentially into data array
     i2c_read(MPU9250_ADDRESS, MPU9250_GYRO_XOUT_H, raw_data, 6);
@@ -64,12 +64,13 @@ void MPU9250readGyroData(int16_t * destination) {
     destination[2] = ((int16_t)raw_data[4] << 8) | raw_data[5];
 }
 
-void MPU9250readMagData(int16_t * destination) {
+void MPU9250_readMagData(int16_t * destination) {
     // x/y/z gyro register data, ST2 register stored here
     // must read ST2 at end of data acquisition
     uint8_t raw_data[7];
     // wait for magnetometer data ready bit to be set
-    if (i2c_read_reg(AK8963_ADDRESS, AK8963_ST1) & 0x01) {
+    i2c_read_reg(AK8963_ADDRESS, AK8963_ST1, raw_data);
+    if (raw_data[0] & 0x01) {
         // Read the six raw data and ST2 registers sequentially into data array
         i2c_read(AK8963_ADDRESS, AK8963_XOUT_L, raw_data, 7);
         // End data read by reading ST2 register
@@ -83,7 +84,7 @@ void MPU9250readMagData(int16_t * destination) {
     }
 }
 
-int16_t MPU9250readTempData() {
+int16_t MPU9250_readTempData() {
     uint8_t raw_data[2];
     // Read the two raw data registers sequentially into data array 
     i2c_read(MPU9250_ADDRESS, MPU9250_TEMP_OUT_H, raw_data, 2);
@@ -91,7 +92,7 @@ int16_t MPU9250readTempData() {
     return ((int16_t)raw_data[0] << 8) | raw_data[1];
 }
 
-void initAK8963(enum MPU9250Mscale mscale, uint8_t mmode, float * destination)
+void AK8963_init(enum MPU9250Mscale mscale, uint8_t mmode, float * destination)
 {
     // First extract the factory calibration for each magnetometer axis
     uint8_t raw_data[3];  // x/y/z gyro calibration data stored here
@@ -116,7 +117,7 @@ void initAK8963(enum MPU9250Mscale mscale, uint8_t mmode, float * destination)
     Delay_Ms(10);
 }
 
-void initMPU9250(enum MPU9250Gscale gscale, enum MPU9250Ascale ascale)
+void MPU9250_init(enum MPU9250Gscale gscale, enum MPU9250Ascale ascale)
 {  
     // wake up device
     // Clear sleep mode bit (6), enable all sensors
@@ -145,7 +146,8 @@ void initMPU9250(enum MPU9250Gscale gscale, enum MPU9250Ascale ascale)
     // Set gyroscope full scale range
     // Range selects FS_SEL and GFS_SEL are 0 - 3,
     // so 2-bit values are left-shifted into positions 4:3
-    uint8_t c = i2c_read_reg(MPU9250_ADDRESS, MPU9250_GYRO_CONFIG);
+    uint8_t c;
+    i2c_read_reg(MPU9250_ADDRESS, MPU9250_GYRO_CONFIG, &c);
 
     // Clear self-test bits [7:5]
     // i2c_write_reg(MPU9250_ADDRESS, MPU9250_GYRO_CONFIG, c & ~0xE0);
@@ -160,7 +162,7 @@ void initMPU9250(enum MPU9250Gscale gscale, enum MPU9250Ascale ascale)
     // i2c_write_reg(MPU9250_ADDRESS, MPU9250_GYRO_CONFIG, c | 0x00);
 
     // Set accelerometer full-scale range configuration
-    c = i2c_read_reg(MPU9250_ADDRESS, MPU9250_ACCEL_CONFIG);
+    i2c_read_reg(MPU9250_ADDRESS, MPU9250_ACCEL_CONFIG, &c);
     // Clear self-test bits [7:5]
     //  i2c_write_reg(MPU9250_ADDRESS, MPU9250_ACCEL_CONFIG, c & ~0xE0);
     // Clear AFS bits [4:3]
@@ -171,7 +173,7 @@ void initMPU9250(enum MPU9250Gscale gscale, enum MPU9250Ascale ascale)
     // Set accelerometer sample rate configuration
     // It is possible to get a 4 kHz sample rate from the accelerometer by choosing 1 for
     // accel_fchoice_b bit [3]; in this case the bandwidth is 1.13 kHz
-    c = i2c_read_reg(MPU9250_ADDRESS, MPU9250_ACCEL_CONFIG2);
+    i2c_read_reg(MPU9250_ADDRESS, MPU9250_ACCEL_CONFIG2, &c);
     // Clear accel_fchoice_b (bit 3) and A_DLPFG (bits [2:0])
     i2c_write_reg(MPU9250_ADDRESS, MPU9250_ACCEL_CONFIG2, c & ~0x0F);
     // Set accelerometer rate to 1 kHz and bandwidth to 41 Hz
@@ -196,7 +198,7 @@ void initMPU9250(enum MPU9250Gscale gscale, enum MPU9250Ascale ascale)
 // device initialization. It calculates the average of the at-rest
 // readings and then loads the resulting offsets into accelerometer
 // and gyro bias registers.
-void accelgyrocalMPU9250(float * dest1, float * dest2)
+void MPU9250_calibrate_accelgyro(float * dest1, float * dest2)
 {  
     uint8_t data[12]; // data array to hold accelerometer and gyro x, y, z, data
     uint16_t ii, packet_count, fifo_count;
@@ -285,9 +287,9 @@ void accelgyrocalMPU9250(float * dest1, float * dest2)
 
     if (accel_bias[2] > 0L) {
         // Remove gravity from the z-axis accelerometer bias calculation
-        accel_bias[2] -= (int32_t) accelsensitivity;
+        accel_bias[2] -= (int32_t) accel_sensitivity;
     } else {
-        accel_bias[2] += (int32_t) accelsensitivity;
+        accel_bias[2] += (int32_t) accel_sensitivity;
     }
 
     // Construct the gyro biases for push to the hardware gyro bias registers, which are reset to zero upon device startup
@@ -311,9 +313,9 @@ void accelgyrocalMPU9250(float * dest1, float * dest2)
     */
 
     // Output scaled gyro biases for display in the main program
-    dest1[0] = (float) gyro_bias[0]/(float) gyrosensitivity;  
-    dest1[1] = (float) gyro_bias[1]/(float) gyrosensitivity;
-    dest1[2] = (float) gyro_bias[2]/(float) gyrosensitivity;
+    dest1[0] = (float) gyro_bias[0]/(float) gyro_sensitivity;  
+    dest1[1] = (float) gyro_bias[1]/(float) gyro_sensitivity;
+    dest1[2] = (float) gyro_bias[2]/(float) gyro_sensitivity;
 
     // Construct the accelerometer biases for push to the hardware accelerometer bias registers. These registers contain
     // factory trim values which must be added to the calculated accelerometer biases; on boot up these registers will hold
@@ -352,9 +354,9 @@ void accelgyrocalMPU9250(float * dest1, float * dest2)
     accel_bias_reg[2] -= (accel_bias[2]/8);
 
     // Output scaled accelerometer biases for display in the main program
-    dest2[0] = (float)accel_bias[0]/(float)accelsensitivity; 
-    dest2[1] = (float)accel_bias[1]/(float)accelsensitivity;
-    dest2[2] = (float)accel_bias[2]/(float)accelsensitivity;
+    dest2[0] = (float)accel_bias[0]/(float)accel_sensitivity; 
+    dest2[1] = (float)accel_bias[1]/(float)accel_sensitivity;
+    dest2[2] = (float)accel_bias[2]/(float)accel_sensitivity;
 
     for (ii = 0; ii < 3; ii++) {
         accel_bias_reg[ii] <<= 1;
@@ -391,7 +393,7 @@ void accelgyrocalMPU9250(float * dest1, float * dest2)
     */
 }
 
-void magcalMPU9250(float MPU9250mRes, float* magCalibration, float * dest1) {
+void MPU9250_calibrate_mag(float MPU9250mRes, float* magCalibration, float * dest1) {
     uint16_t ii;
     uint16_t sample_count;
     int16_t mag_bias[3];
@@ -403,7 +405,7 @@ void magcalMPU9250(float MPU9250mRes, float* magCalibration, float * dest1) {
 
     sample_count = 64;
     for (ii = 0; ii < sample_count; ii++) {
-        MPU9250readMagData(mag_bias);  // Read the mag data   
+        MPU9250_readMagData(mag_bias);  // Read the mag data   
         for (int jj = 0; jj < 3; jj++) {
             if (mag_bias[jj] > mag_max[jj])
                 mag_max[jj] = mag_bias[jj];
@@ -432,7 +434,7 @@ void magcalMPU9250(float MPU9250mRes, float* magCalibration, float * dest1) {
 // Accelerometer and gyroscope self test; check calibration wrt factory settings
 // Should return percent deviation from factory trim values, +/- 14 or
 // less deviation is a pass
-void MPU9250SelfTest(float * destination) 
+void MPU9250_self_test(float * destination) 
 {
     uint8_t raw_data[6];
     int32_t gAvg[3] = {0};
@@ -512,18 +514,10 @@ void MPU9250SelfTest(float * destination)
     Delay_Ms(25);  // Delay a while to let the device stabilize
 
     // Retrieve accelerometer and gyro factory Self-Test Code from USR_Reg
-    // X-axis accel self-test results
-    raw_data[0] = i2c_read_reg(MPU9250_ADDRESS, MPU9250_SELF_TEST_X_ACCEL);
-    // Y-axis accel self-test results
-    raw_data[1] = i2c_read_reg(MPU9250_ADDRESS, MPU9250_SELF_TEST_Y_ACCEL);
-    // Z-axis accel self-test results
-    raw_data[2] = i2c_read_reg(MPU9250_ADDRESS, MPU9250_SELF_TEST_Z_ACCEL);
-    // X-axis gyro self-test results
-    raw_data[3] = i2c_read_reg(MPU9250_ADDRESS, MPU9250_SELF_TEST_X_GYRO);
-    // Y-axis gyro self-test results
-    raw_data[4] = i2c_read_reg(MPU9250_ADDRESS, MPU9250_SELF_TEST_Y_GYRO);
-    // Z-axis gyro self-test results
-    raw_data[5] = i2c_read_reg(MPU9250_ADDRESS, MPU9250_SELF_TEST_Z_GYRO);
+    // Accel self-test results
+    i2c_read(MPU9250_ADDRESS, MPU9250_SELF_TEST_X_ACCEL, raw_data, 3);
+    // Gyro self-test results
+    i2c_read(MPU9250_ADDRESS, MPU9250_SELF_TEST_X_GYRO, &raw_data[3], 3);
 
     // Retrieve factory self-test value from self-test code reads
     factoryTrim[0] = (float)(2620/(1<<FS))*(powf( 1.01f , ((float)raw_data[0] - 1.0f) )); // FT[Xa] factory trim calculation
