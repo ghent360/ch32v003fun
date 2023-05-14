@@ -7,7 +7,7 @@
 #include "systick.h"
 
 //uint8_t test_data[] = {0x72, 00, 00, 00, 00};
-//float testResults[6];
+float testResults[6];
 #define PI 3.14159265358979323846f
 #define DEGREE_TO_RAD (PI / 180.0f)
 
@@ -66,6 +66,15 @@ static void calculate_tb_angles() {
 	lin_az = az - a33;
 }
 
+static void panic(uint16_t d1, uint16_t d2) {
+	while(1) {
+		GPIO_Clear(GPIOD, 4); // Turn PD4 LED ON
+		Delay_Ms(d1);
+		GPIO_Set(GPIOD, 4);   // Turn PD4 LED OFF
+		Delay_Ms(d2);
+	}
+}
+
 int main()
 {
 	// 48MHz internal clock
@@ -104,31 +113,38 @@ int main()
 
 	i2c_read_reg(MPU9250_ADDRESS, MPU9250_WHO_AM_I, &data);
 	if (data != 0x71) {
-		while(1) {
-			GPIO_Clear(GPIOD, 4); // Turn PD4 LED ON
-			Delay_Ms(250);
-			GPIO_Set(GPIOD, 4); // Turn PD4 LED OFF
-			Delay_Ms(250);
-		}
+		panic(250, 250);
 	}
+#if 0
+	// wake up device
+	// Clear sleep mode bit (6), enable all sensors
+	i2c_write_reg(MPU9250_ADDRESS, MPU9250_PWR_MGMT_1, 0x80);
+	Delay_Ms(20); // Wait for all registers to reset 
+	// Set PLL clock source
+	i2c_write_reg(MPU9250_ADDRESS, MPU9250_PWR_MGMT_1, 0x01);
+	Delay_Ms(100);
+	MPU9250_self_test(testResults);
+	UART_WriteStr("Test Results");UART_WriteStr(CRLF);
+	UART_WriteStr("ax = ");UART_WriteFloat(testResults[0], 2);
+	UART_WriteStr("    gx = ");UART_WriteFloat(testResults[3], 2);UART_WriteStr(CRLF);
+	UART_WriteStr("ay = ");UART_WriteFloat(testResults[1], 2);
+	UART_WriteStr("    gy = ");UART_WriteFloat(testResults[4], 2);UART_WriteStr(CRLF);
+	UART_WriteStr("az = ");UART_WriteFloat(testResults[2], 2);
+	UART_WriteStr("    gz = ");UART_WriteFloat(testResults[5], 2);UART_WriteStr(CRLF);
+#endif
 	MPU9250_initRes();
 	// Calibrate gyro and accelerometers, load biases in bias registers
-	//MPU9250_calibrate_accelgyro();
+	MPU9250_calibrate_accelgyro();
 	MPU9250_init();
 
     // We can communicate with the AK8963 only after the MPU9250 has been
 	// initialized.
 	i2c_read_reg(AK8963_ADDRESS, WHO_AM_I_AK8963, &data);
 	if (data != 0x48) {
-		while(1) {
-			GPIO_Clear(GPIOD, 4); // Turn PD4 LED ON
-			Delay_Ms(400);
-			GPIO_Set(GPIOD, 4); // Turn PD4 LED OFF
-			Delay_Ms(100);
-		}
+		panic(400, 100);
 	}
 	AK8963_init();
-	//MPU9250_calibrate_mag();
+	MPU9250_calibrate_mag();
 	uint32_t now;
 	uint32_t last_imu_update = systick_cnt;
 	float elapsed_time = 0;
@@ -136,23 +152,6 @@ int main()
 	uint32_t last_report_time = last_imu_update;
 	while(1)
 	{
-#if 0
-		// wake up device
-		// Clear sleep mode bit (6), enable all sensors
-		i2c_write_reg(MPU9250_ADDRESS, MPU9250_PWR_MGMT_1, 0x80);
-		Delay_Ms(20); // Wait for all registers to reset 
-		// Set PLL clock source
-		i2c_write_reg(MPU9250_ADDRESS, MPU9250_PWR_MGMT_1, 0x01);
-		Delay_Ms(100);
-		MPU9250_self_test(testResults);
-		UART_WriteStr("Test Results");UART_WriteStr(CRLF);
-        UART_WriteStr("ax = ");UART_WriteFloat(testResults[0], 2);
-		UART_WriteStr("    gx = ");UART_WriteFloat(testResults[3], 2);UART_WriteStr(CRLF);
-        UART_WriteStr("ay = ");UART_WriteFloat(testResults[1], 2);
-		UART_WriteStr("    gy = ");UART_WriteFloat(testResults[4], 2);UART_WriteStr(CRLF);
-        UART_WriteStr("az = ");UART_WriteFloat(testResults[2], 2);
-		UART_WriteStr("    gz = ");UART_WriteFloat(testResults[5], 2);UART_WriteStr(CRLF);
-#endif
         if (read_imu_data() == 0) {
 			now = systick_cnt;
 			// set integration time by time elapsed since last filter update
