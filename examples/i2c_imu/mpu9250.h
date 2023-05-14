@@ -167,6 +167,12 @@ extern "C" {
 #endif
 
 void MPU9250_self_test(float * destination);
+void MPU9250_initRes();
+void MPU9250_calibrate_accelgyro();
+void MPU9250_init();
+void AK8963_init();
+void MPU9250_calibrate_mag();
+uint8_t read_imu_data();
 
 #ifdef __cplusplus
 }
