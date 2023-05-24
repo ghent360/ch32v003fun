@@ -144,7 +144,7 @@ int main()
 		panic(400, 100);
 	}
 	AK8963_init();
-	MPU9250_calibrate_mag();
+	//MPU9250_calibrate_mag();
 	uint32_t now;
 	uint32_t last_imu_update = systick_cnt;
 	float elapsed_time = 0;
@@ -159,6 +159,7 @@ int main()
 			elapsed_time += deltat;
 			update_cnt++;
 			last_imu_update = now;
+#if 0			
 			if (use_mahony) {
 				MahonyQuaternionUpdate(
 					-ax, ay, az, 
@@ -170,9 +171,32 @@ int main()
 					gx * DEGREE_TO_RAD, -gy * DEGREE_TO_RAD, -gz * DEGREE_TO_RAD,
 					my,  -mx, mz);
 			}
+#endif
 		}
 		now = systick_cnt;
 		if (now - last_report_time > 500) {
+			UART_WriteStr("ax, ay, az: ");
+			UART_WriteFloat(ax, 2);
+			UART_WriteStr(", ");
+			UART_WriteFloat(ay, 2);
+			UART_WriteStr(", ");
+			UART_WriteFloat(az, 2);
+			UART_WriteStr(CRLF);
+			UART_WriteStr("gx, gy, gz: ");
+			UART_WriteFloat(gx, 2);
+			UART_WriteStr(", ");
+			UART_WriteFloat(gy, 2);
+			UART_WriteStr(", ");
+			UART_WriteFloat(gz, 2);
+			UART_WriteStr(CRLF);
+			UART_WriteStr("mx, my, mz: ");
+			UART_WriteFloat(mx, 2);
+			UART_WriteStr(", ");
+			UART_WriteFloat(my, 2);
+			UART_WriteStr(", ");
+			UART_WriteFloat(mz, 2);
+			UART_WriteStr(CRLF);
+#if 0
 			calculate_tb_angles();
 
 			UART_WriteStr("Yaw, Pitch, Roll: ");
@@ -204,7 +228,7 @@ int main()
 			UART_WriteFloat((float)update_cnt/elapsed_time, 2);
 			UART_WriteStr(" Hz");
 			UART_WriteStr(CRLF);
-
+#endif
 			last_report_time = now;
 			elapsed_time = 0;
 			update_cnt = 0;

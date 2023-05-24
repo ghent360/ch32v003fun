@@ -8,12 +8,12 @@
 #define WHO_AM_I_AK8963  0x00 // should return 0x48
 #define INFO             0x01
 #define AK8963_ST1       0x02  // data ready status bit 0
-#define AK8963_XOUT_L	 0x03  // data
-#define AK8963_XOUT_H	 0x04
-#define AK8963_YOUT_L	 0x05
-#define AK8963_YOUT_H	 0x06
-#define AK8963_ZOUT_L	 0x07
-#define AK8963_ZOUT_H	 0x08
+#define AK8963_XOUT_L	   0x03  // data
+#define AK8963_XOUT_H	   0x04
+#define AK8963_YOUT_L	   0x05
+#define AK8963_YOUT_H	   0x06
+#define AK8963_ZOUT_L	   0x07
+#define AK8963_ZOUT_H	   0x08
 #define AK8963_ST2       0x09  // Data overflow bit 3 and data read error status bit 2
 #define AK8963_CNTL      0x0A  // Power down (0000), single-measurement (0001), self-test (1000) and Fuse ROM (1111) modes on bits 3:0
 #define AK8963_ASTC      0x0C  // Self test control
@@ -21,6 +21,23 @@
 #define AK8963_ASAX      0x10  // Fuse ROM x-axis sensitivity adjustment value
 #define AK8963_ASAY      0x11  // Fuse ROM y-axis sensitivity adjustment value
 #define AK8963_ASAZ      0x12  // Fuse ROM z-axis sensitivity adjustment value
+
+#define AKM_DATA_READY      0x01
+#define AKM_DATA_OVERRUN    0x02
+#define AKM_OVERFLOW        0x80
+#define AKM_DATA_ERROR      0x40
+
+#define AKM_BIT_SELF_TEST   0x40
+
+#define SUPPORTS_AK89xx_HIGH_SENS   0x10
+#define AK89xx_FSR                  4915
+
+#define AKM_POWER_DOWN          (0x00 | SUPPORTS_AK89xx_HIGH_SENS)
+#define AKM_SINGLE_MEASUREMENT  (0x01 | SUPPORTS_AK89xx_HIGH_SENS)
+#define AKM_FUSE_ROM_ACCESS     (0x0F | SUPPORTS_AK89xx_HIGH_SENS)
+#define AKM_MODE_SELF_TEST      (0x08 | SUPPORTS_AK89xx_HIGH_SENS)
+
+#define AKM_WHOAMI_ID       0x48
 
 #define MPU9250_SELF_TEST_X_GYRO 0x00                  
 #define MPU9250_SELF_TEST_Y_GYRO 0x01                                                                          
@@ -139,6 +156,50 @@
 #define MPU9250_ZA_OFFSET_H      0x7D
 #define MPU9250_ZA_OFFSET_L      0x7E
 
+#define BIT_I2C_MST_VDDIO   0x80
+#define BIT_FIFO_EN         0x40
+#define BIT_DMP_EN          0x80
+#define BIT_FIFO_RST        0x04
+#define BIT_DMP_RST         0x08
+#define BIT_FIFO_OVERFLOW   0x10
+#define BIT_DATA_RDY_EN     0x01
+#define BIT_DMP_INT_EN      0x02
+#define BIT_MOT_INT_EN      0x40
+#define BITS_FSR            0x18
+#define BITS_LPF            0x07
+#define BITS_HPF            0x07
+#define BITS_CLK            0x07
+#define BIT_FIFO_SIZE_1024  0x40
+#define BIT_FIFO_SIZE_2048  0x80
+#define BIT_FIFO_SIZE_4096  0xC0
+#define BIT_RESET           0x80
+#define BIT_SLEEP           0x40
+#define BIT_S0_DELAY_EN     0x01
+#define BIT_S2_DELAY_EN     0x04
+#define BITS_SLAVE_LENGTH   0x0F
+#define BIT_SLAVE_BYTE_SW   0x40
+#define BIT_SLAVE_GROUP     0x10
+#define BIT_SLAVE_EN        0x80
+#define BIT_I2C_READ        0x80
+#define BITS_I2C_MASTER_DLY 0x1F
+#define BIT_AUX_IF_EN       0x20
+#define BIT_ACTL            0x80
+#define BIT_LATCH_EN        0x20
+#define BIT_ANY_RD_CLR      0x10
+#define BIT_BYPASS_EN       0x02
+#define BITS_WOM_EN         0xC0
+#define BIT_LPA_CYCLE       0x20
+#define BIT_STBY_XA         0x20
+#define BIT_STBY_YA         0x10
+#define BIT_STBY_ZA         0x08
+#define BIT_STBY_XG         0x04
+#define BIT_STBY_YG         0x02
+#define BIT_STBY_ZG         0x01
+#define BIT_STBY_XYZA       (BIT_STBY_XA | BIT_STBY_YA | BIT_STBY_ZA)
+#define BIT_STBY_XYZG       (BIT_STBY_XG | BIT_STBY_YG | BIT_STBY_ZG)
+
+#define MAX_COMPASS_SAMPLE_RATE 100
+
 #define MPU9250_ADDRESS 0x68       // MPU9250 address when ADO = 1
 #define AK8963_ADDRESS  0x0C       // Address of AK8963 (MPU9250) magnetometer
 
@@ -159,6 +220,22 @@ enum MPU9250Gscale {
 enum MPU9250Mscale {
   MFS_14BITS = 0, // 0.6 mG per LSB
   MFS_16BITS      // 0.15 mG per LSB
+};
+
+enum MPU9250LPF {
+  FILTER_256HZ_NOLPF2 = 0,
+  FILTER_188HZ,
+  FILTER_98HZ,
+  FILTER_42HZ,
+  FILTER_20HZ,
+  FILTER_10HZ,
+  FILTER_5HZ,
+  FILTER_2100HZ_NOLPF
+};
+
+enum MPU9250ClockSrc {
+  CLK_INTERNAL = 0,
+  CLK_PLL
 };
 
 #ifdef __cplusplus

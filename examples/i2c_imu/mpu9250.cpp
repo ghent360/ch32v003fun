@@ -9,7 +9,7 @@ constexpr uint16_t gyro_sensitivity  = 131;    // = 131 LSB/degrees/sec
 constexpr uint16_t accel_sensitivity = 16384;  // = 16384 LSB/g
 
 MPU9250Gscale g_scale = GFS_250DPS;
-MPU9250Ascale a_scale = AFS_2G;
+MPU9250Ascale a_scale = AFS_16G;
 MPU9250Mscale m_scale = MFS_16BITS;
 uint8_t m_mode = 0x06;        // 2 for 8 Hz, 6 for 100 Hz continuous magnetometer data read
 
@@ -18,7 +18,7 @@ static float mag_calibration[3];  // Factory mag calibration and mag bias
 
 //static float gyro_bias_values[3];
 //static float accel_bias_values[3];
-static float mag_bias_values[3];
+static float mag_bias_values[3] = {0};
 
 static inline float getMres() {
   return (m_scale == MFS_14BITS) ?
@@ -122,8 +122,9 @@ static void MPU9250_readMagData() {
             // Check if magnetic sensor overflow set, if not then report data
             // Turn the MSB and LSB into a signed 16-bit value
             // Calculate the magnetometer values in milliGauss
-            // Include factory calibration per data sheet and user environmental corrections
-            // get actual magnetometer value, this depends on scale being set
+            // Include factory calibration per data sheet and user environmental
+            // corrections get actual magnetometer value, this depends on scale
+            // being set
             mx = (float)(((int16_t)raw_data[1] << 8) | raw_data[0]) * mag_calibration[0] - mag_bias_values[0];
             my = (float)(((int16_t)raw_data[3] << 8) | raw_data[2]) * mag_calibration[1] - mag_bias_values[1];  
             mz = (float)(((int16_t)raw_data[5] << 8) | raw_data[4]) * mag_calibration[2] - mag_bias_values[2];
@@ -165,18 +166,15 @@ void AK8963_init() {
 
 void MPU9250_init()
 {  
+    i2c_write_reg(MPU9250_ADDRESS, MPU9250_PWR_MGMT_1, BIT_RESET);
+    Delay_Ms(100); // Wait for all registers to reset 
+
     // wake up device
-    i2c_write_reg(MPU9250_ADDRESS, MPU9250_PWR_MGMT_1, 0x80);
-    Delay_Ms(100); // Wait for all registers to reset 
-
-    // Clear sleep mode bit (6), enable all sensors
-    i2c_write_reg(MPU9250_ADDRESS, MPU9250_PWR_MGMT_1, 0x00);
-    Delay_Ms(100); // Wait for all registers to reset 
-
-    // get stable time source
     // Auto select clock source to be PLL gyroscope reference if ready else
     i2c_write_reg(MPU9250_ADDRESS, MPU9250_PWR_MGMT_1, 0x01);
-    Delay_Ms(200); 
+    Delay_Ms(200); // Wait for all registers to reset 
+
+    //i2c_write_reg(MPU9250_ADDRESS, MPU9250_ACCEL_CONFIG2, BIT_FIFO_SIZE_1024 | 0x8);
 
     // Configure Gyro and Thermometer
     // Disable FSYNC and set thermometer and gyro bandwidth to 41 and 42 Hz, respectively;
@@ -195,38 +193,24 @@ void MPU9250_init()
     // Set gyroscope full scale range
     // Range selects FS_SEL and GFS_SEL are 0 - 3,
     // so 2-bit values are left-shifted into positions 4:3
-    uint8_t c;
-    i2c_read_reg(MPU9250_ADDRESS, MPU9250_GYRO_CONFIG, &c);
 
     // Clear self-test bits [7:5]
-    // i2c_write_reg(MPU9250_ADDRESS, MPU9250_GYRO_CONFIG, c & ~0xE0);
-
     // Clear Fchoice bits [1:0] 
-    i2c_write_reg(MPU9250_ADDRESS, MPU9250_GYRO_CONFIG, c & ~0x03);
-    // Clear GFS bits [4:3]
-    i2c_write_reg(MPU9250_ADDRESS, MPU9250_GYRO_CONFIG, c & ~0x18);
     // Set full scale range for the gyro
-    i2c_write_reg(MPU9250_ADDRESS, MPU9250_GYRO_CONFIG, c | (g_scale << 3));
-    // Set Fchoice for the gyro to 11 by writing its inverse to bits 1:0 of GYRO_CONFIG
-    // i2c_write_reg(MPU9250_ADDRESS, MPU9250_GYRO_CONFIG, c | 0x00);
+    i2c_write_reg(MPU9250_ADDRESS, MPU9250_GYRO_CONFIG, (g_scale << 3));
+
 
     // Set accelerometer full-scale range configuration
-    i2c_read_reg(MPU9250_ADDRESS, MPU9250_ACCEL_CONFIG, &c);
     // Clear self-test bits [7:5]
-    //  i2c_write_reg(MPU9250_ADDRESS, MPU9250_ACCEL_CONFIG, c & ~0xE0);
-    // Clear AFS bits [4:3]
-    i2c_write_reg(MPU9250_ADDRESS, MPU9250_ACCEL_CONFIG, c & ~0x18);
     // Set full scale range for the accelerometer 
-    i2c_write_reg(MPU9250_ADDRESS, MPU9250_ACCEL_CONFIG, c | (a_scale << 3));
+    i2c_write_reg(MPU9250_ADDRESS, MPU9250_ACCEL_CONFIG, (a_scale << 3));
 
     // Set accelerometer sample rate configuration
     // It is possible to get a 4 kHz sample rate from the accelerometer by choosing 1 for
     // accel_fchoice_b bit [3]; in this case the bandwidth is 1.13 kHz
-    i2c_read_reg(MPU9250_ADDRESS, MPU9250_ACCEL_CONFIG2, &c);
     // Clear accel_fchoice_b (bit 3) and A_DLPFG (bits [2:0])
-    i2c_write_reg(MPU9250_ADDRESS, MPU9250_ACCEL_CONFIG2, c & ~0x0F);
     // Set accelerometer rate to 1 kHz and bandwidth to 41 Hz
-    i2c_write_reg(MPU9250_ADDRESS, MPU9250_ACCEL_CONFIG2, c | 0x03);
+    i2c_write_reg(MPU9250_ADDRESS, MPU9250_ACCEL_CONFIG2, 0x03);
 
     // The accelerometer, gyro, and thermometer are set to 1 kHz sample rates, 
     // but all these rates are further reduced by a factor of 5 to 200 Hz because
@@ -391,21 +375,21 @@ void MPU9250_calibrate_accelgyro()
             // If temperature compensation bit is set, record that fact in mask_bit
             mask_bit[ii] = 0x01;
         }
-        accel_bias_reg[ii] >>= 1;
+        //accel_bias_reg[ii] >>= 1;
     }
 
     // Construct total accelerometer bias, including calculated average
     // accelerometer bias from above
     // Subtract calculated averaged accelerometer bias scaled to 2048 LSB/g
     // (16 g full scale)
-    accel_bias_reg[0] -= (accel_bias[0]/8);
-    accel_bias_reg[1] -= (accel_bias[1]/8);
-    accel_bias_reg[2] -= (accel_bias[2]/8);
+    accel_bias_reg[0] = (accel_bias[0]/8);
+    accel_bias_reg[1] = (accel_bias[1]/8);
+    accel_bias_reg[2] = (accel_bias[2]/8);
 
     // Output scaled accelerometer biases for display in the main program
-    accel_bias[0] = (float)accel_bias[0]/(float)accel_sensitivity;
-    accel_bias[1] = (float)accel_bias[1]/(float)accel_sensitivity;
-    accel_bias[2] = (float)accel_bias[2]/(float)accel_sensitivity;
+    //accel_bias_values[0] = (float)accel_bias[0]/(float)accel_sensitivity;
+    //accel_bias_values[1] = (float)accel_bias[1]/(float)accel_sensitivity;
+    //accel_bias_values[2] = (float)accel_bias[2]/(float)accel_sensitivity;
 
     for (ii = 0; ii < 3; ii++) {
         accel_bias_reg[ii] <<= 1;
