@@ -12,6 +12,7 @@ CFLAGS+= \
 	-static-libgcc \
 	-march=rv32ec \
 	-mabi=ilp32e \
+	-I$(CH32V003FUN)/../extralibs \
 	-I$(CH32V003FUN) \
 	-nostdlib \
 	-I. -Wall
@@ -23,8 +24,9 @@ LDFLAGS+= \
 	$(LD_LIBS)
 
 SYSTEM_C:=$(CH32V003FUN)/ch32v003fun.c
+TARGET_EXT?=c
 
-$(TARGET).elf : $(SYSTEM_C) $(TARGET).c $(ADDITIONAL_C_FILES)
+$(TARGET).elf : $(SYSTEM_C) $(TARGET).$(TARGET_EXT) $(ADDITIONAL_C_FILES)
 	$(PREFIX)-gcc -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 $(TARGET).bin : $(TARGET).elf
@@ -48,7 +50,7 @@ monitor :
 	$(MINICHLINK)/minichlink -T
 
 gdbserver : 
-	-$(MINICHLINK)/minichlink -beG
+	-$(MINICHLINK)/minichlink -baG
 
 cv_flash : $(TARGET).bin
 	make -C $(MINICHLINK) all
